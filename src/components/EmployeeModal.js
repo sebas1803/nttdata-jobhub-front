@@ -3,6 +3,7 @@ import {
   VStack, Input, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
   Button, FormLabel, FormControl, HStack, Select, Tag, TagLabel, TagCloseButton, Stack, Switch, Flex
 } from "@chakra-ui/react";
+import { getAllOffices } from '../services/OfficeService'
 
 function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
   const [employeeData, setEmployeeData] = useState({
@@ -11,17 +12,31 @@ function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
     dni: "",
     address: "",
     offices: [],
-    isRemote: false,
+    remote: false,
   });
 
   const [selectedOffice, setSelectedOffice] = useState("");
   const [officeOptions, setOfficeOptions] = useState([]);
-  const [isRemote, setIsRemote] = useState(false);
+
+  const [availableOffices, setAvailableOffices] = useState([]);
+
 
   useEffect(() => {
     if (employee) {
       setEmployeeData({ ...employee });
     }
+
+    const fetchOffices = async () => {
+      try {
+        const offices = await getAllOffices();
+        setOfficeOptions(offices);
+        setAvailableOffices(offices);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    fetchOffices();
   }, [employee]);
 
   const handleFieldChange = (fieldName, value) => {
@@ -39,12 +54,16 @@ function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
   };
 
   const handleAddOffice = () => {
-    if (selectedOffice && !isRemote) {
-      setEmployeeData({
-        ...employeeData,
-        offices: [...employeeData.offices, selectedOffice],
-      });
-      setSelectedOffice("");
+    if (selectedOffice && !employeeData.remote) {
+      const selectedOfficeId = parseInt(selectedOffice);
+      const officeToAdd = officeOptions.find((office) => office.id === selectedOfficeId);
+      if (officeToAdd) {
+        setEmployeeData({
+          ...employeeData,
+          offices: [...employeeData.offices, officeToAdd],
+        });
+        setSelectedOffice("");
+      }
     }
   };
 
@@ -54,9 +73,6 @@ function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
   };
 
   const handleUpdate = () => {
-    if (isRemote) {
-      employeeData.offices = ["Remoto"];
-    }
     onUpdateEmployee(employeeData);
   };
 
@@ -89,14 +105,14 @@ function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
               <Stack>
                 <Flex justify="space-between">
                   <HStack spacing={2} flexWrap="wrap">
-                    {isRemote ? ( // Si es remoto, muestra el tag "Remoto"
+                    {employeeData.remote ? (
                       <Tag variant='subtle' colorScheme='blue'>
                         <TagLabel>Remoto</TagLabel>
                       </Tag>
                     ) : (
-                      employeeData.offices.map((office, index) => ( // Si no es remoto, muestra las oficinas
+                      employeeData.offices.map((office, index) => (
                         <Tag key={index} variant='subtle' colorScheme='blue'>
-                          <TagLabel>{office}</TagLabel>
+                          <TagLabel>{office.name}</TagLabel>
                           <TagCloseButton onClick={() => handleRemoveOffice(office)} />
                         </Tag>
                       ))
@@ -104,16 +120,20 @@ function EmployeeModal({ isOpen, onClose, employee, onUpdateEmployee }) {
                   </HStack>
                   <HStack align="center">
                     <FormLabel m={0}>Remoto</FormLabel>
-                    <Switch onChange={() => setIsRemote(!isRemote)} isChecked={isRemote} />
+                    <Switch onChange={(e) => handleFieldChange("remote", e.target.checked)} isChecked={employeeData.remote} />
                   </HStack>
                 </Flex>
-                <Select value={selectedOffice} onChange={(e) => setSelectedOffice(e.target.value)} defaultValue="">
+                <Select value={selectedOffice} onChange={(e) => setSelectedOffice(e.target.value)} isDisabled={employeeData.remote}>
                   <option value="" disabled>Seleccionar oficina</option>
-                  <option value="Oficina A">Oficina A</option>
-                  <option value="Oficina B">Oficina B</option>
-                  {/* Agrega más opciones según sea necesario */}
+                  {availableOffices
+                    .filter((office) => !employeeData.offices.some((addedOffice) => addedOffice.id === office.id))
+                    .map((office) => (
+                      <option key={office.id} value={office.id}>
+                        {office.name}
+                      </option>
+                    ))}
                 </Select>
-                <Button size="sm" onClick={handleAddOffice}>
+                <Button size="sm" onClick={handleAddOffice} isDisabled={employeeData.remote}>
                   Agregar
                 </Button>
               </Stack>

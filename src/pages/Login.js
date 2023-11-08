@@ -5,12 +5,13 @@ import {
 } from "@chakra-ui/react";
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons'
 import { useNavigate } from 'react-router-dom';
+import { loginEmployee } from '../services/AuthService'
 
 function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
+    dni: "",
     password: "",
   });
 
@@ -23,9 +24,14 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("envio del submit", formData);
-    navigate('/');
+    try {
+      e.preventDefault();
+      const token = await loginEmployee(formData);
+      localStorage.setItem("access_token", token);
+      navigate('/');
+    } catch (error) {
+      console.error("Error al iniciar sesión", error);
+    }
   };
 
 
@@ -42,11 +48,11 @@ function Login() {
           <Box rounded={"lg"} bg={"white"} boxShadow={"lg"} p={8}>
             <Stack spacing={4}>
               <FormControl>
-                <FormLabel>Dirección email</FormLabel>
+                <FormLabel>DNI</FormLabel>
                 <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  name="dni"
+                  value={formData.dni}
                   onChange={handleChange}
                 />
               </FormControl>
